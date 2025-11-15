@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Anonymous Chatroom</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <div id="chat-window">
+        <div id="messages">
+            <p class="server-msg">Connecting...</p>
+        </div>
+        <div id="input-area">
+            <input type="text" id="message-input" placeholder="Type your anonymous message..." autocomplete="off">
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const messagesDiv = document.getElementById('messages');
+        const inputField = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        let userAlias = 'Connecting...';
+
+        // 1. Handle Alias Assignment from Server
+        socket.on('set_alias', function(data) {
+            userAlias = data.alias;
+            document.title = userAlias + ' | Anon Chat';
+            console.log('Assigned Alias:', userAlias);
+        });
+
+        // 2. Handle Incoming Messages
+        socket.on('message', function(data) {
+            const line = document.createElement('div');
+            line.classList.add('message-line');
+            
+            if (data.alias === 'SERVER') {
+                line.classList.add('server-msg');
+                line.innerHTML = data.msg;
+            } else {
+                const aliasTag = document.createElement('span');
+                aliasTag.classList.add('alias-tag');
+                aliasTag.textContent = data.alias + ': ';
+                
+                line.appendChild(aliasTag);
+                line.appendChild(document.createTextNode(data.msg));
+            }
+            
+            messagesDiv.appendChild(line);
+            // Auto-scroll to the bottom
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+
+        // 3. Function to Send Message
+        function sendMessage() {
+            const msg = inputField.value.trim();
+            if (msg) {
+                // Emit the message event that the server handles
+                socket.emit('send_message', {'msg': msg});
+                inputField.value = ''; // Clear the input field
+            }
+        }
+
+        // 4. Event Listeners for Send
+        sendButton.addEventListener('click', sendMessage);
+        inputField.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
